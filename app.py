@@ -18,23 +18,26 @@ st.title("Predictive Analysis — Paint Filling Volume & Size Classification")
 st.markdown("Upload your dataset (Excel) or use the default file path.")
 
 # ---- Upload or load file ----
-uploaded_file = st.file_uploader("Upload Excel file (same format as your dataset)", type=["xlsx", "xls", "csv"])
-use_sample = False
+uploaded_file = st.file_uploader("Upload Excel file (same format as your dataset)", type=["csv", "xls", "xlsx"])
+
 if uploaded_file is not None:
-    try:
-        df = pd.read_excel(uploaded_file)
-    except:
+    file_name = uploaded_file.name.lower()
+
+    if file_name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
-else:
-    st.info("No file uploaded. If you want to use local file path, enter it below (optional).")
-    path = st.text_input("Local Excel path (optional)", value=r"C:\Users\yashv\Downloads\Predactive Analysis\CA2\PredactiveDataSet.xlsx")
-    try:
-        df = pd.read_excel(path)
-        use_sample = True
-        st.success(f"Loaded from path: {path}")
-    except Exception as e:
-        st.warning("No dataset loaded yet. Upload or enter a valid path.")
+
+    elif file_name.endswith((".xls", ".xlsx")):
+        df = pd.read_excel(uploaded_file)
+
+    else:
+        st.error("Please upload a CSV or Excel file.")
         st.stop()
+
+    st.success("File uploaded successfully!")
+    st.dataframe(df)
+else:
+    st.warning("Please upload a dataset to continue.")
+    st.stop()
 
 st.subheader("Preview data (first 5 rows)")
 st.dataframe(df.head())
