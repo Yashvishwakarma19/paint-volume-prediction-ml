@@ -1,104 +1,82 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures, LabelEncoder
-from sklearn.tree import DecisionTreeClassifier
 
-st.set_page_config(page_title="Paint Prediction", layout="wide")
-
+# --------------------------------------------------------
+# Title
+# --------------------------------------------------------
 st.title("Predictive Analysis — Paint Filling Volume & Size Classification")
 
-# -------------------------
-# Load dataset from GitHub
-# -------------------------
-URL = "https://raw.githubusercontent.com/Yashvishwakarma19/paint-volume-prediction-ml/main/PredactiveDataSet.xlsx"
-
+# --------------------------------------------------------
+# Load dataset
+# --------------------------------------------------------
 @st.cache_data
 def load_data():
-    return pd.read_excel(URL)
+    df = pd.read_csv("data.csv")
+    return df
 
 df = load_data()
 st.success("Dataset loaded successfully!")
 
-# -------------------------
-# CLEANING
-# -------------------------
-df = df.dropna()
-
-# Create volume category
-df["VOLUME_CATEGORY"] = df["FILLING VOL"].apply(
-    lambda x: "SMALL" if x < 2 else ("MEDIUM" if x < 5 else "LARGE")
-)
-
-# -------------------------
-# ENCODING CATEGORICAL COLUMNS
-# -------------------------
-encode_cols = df.select_dtypes(include=["object"]).columns
+# --------------------------------------------------------
+# Encode categorical columns
+# --------------------------------------------------------
+cat_cols = df.select_dtypes(include=['object']).columns
 encoders = {}
 
-for col in encode_cols:
+for col in cat_cols:
     enc = LabelEncoder()
     df[col] = enc.fit_transform(df[col].astype(str))
     encoders[col] = enc
 
-# -------------------------
-# FEATURES & TARGETS
-# -------------------------
-X = df.drop(columns=["FILLING VOL", "VOLUME_CATEGORY"])
+# --------------------------------------------------------
+# Split data
+# --------------------------------------------------------
+X = df.drop("FILLING VOL", axis=1)
 y = df["FILLING VOL"]
 
-# -------------------------
-# MODELS
-# -------------------------
-lin = LinearRegression()
-lin.fit(X, y)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-poly = PolynomialFeatures(degree=2)
-X_poly = poly.fit_transform(X)
-poly_model = LinearRegression()
-poly_model.fit(X_poly, y)
+# --------------------------------------------------------
+# Train Linear Regression model
+# --------------------------------------------------------
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
 
-clf = DecisionTreeClassifier()
-clf.fit(X, df["VOLUME_CATEGORY"])
-
-# -------------------------
-# USER INPUT FORM
-# -------------------------
-st.header("Enter Product Details")
+# --------------------------------------------------------
+# Input Section
+# --------------------------------------------------------
+st.subheader("Enter Product Details")
 
 user_data = {}
 
 for col in X.columns:
-
-    # If categorical → dropdown with unique original labels
-    if col in encode_cols:
-        original_values = encoders[col].classes_
-        user_value = st.selectbox(f"{col}", original_values)
-        user_data[col] = encoders[col].transform([user_value])[0]
-
+    # If feature was originally string → take text input then encode with saved encoder
+    if col in encoders:
+        val = st.text_input(col)
+        if val != "":
+            user_data[col] = encoders[col].transform([val])[0]
+        else:
+            user_data[col] = 0
     else:
-        # numeric → use median default
-        default_val = float(df[col].median())
-        user_value = st.number_input(f"{col}", value=default_val)
-        user_data[col] = user_value
+        # numeric input
+        val = st.number_input(col, value=0.0)
+        user_data[col] = float(val)
 
-input_df = pd.DataFrame([user_data])
+# --------------------------------------------------------
+# Predict Button
+# --------------------------------------------------------
+if st.button("Predict"):
+    try:
+        input_df = pd.DataFrame([user_data])
+        prediction = lr_model.predict(input_df)[0]
 
-# -------------------------
-# PREDICTIONS
-# -------------------------
-st.subheader("Predictions")
+        st.subheader("Prediction")
+        st.success(f"Predicted Filling Volume = {prediction:.3f} Litres")
 
-lin_pred = lin.predict(input_df)[0]
-poly_pred = poly_model.predict(poly.transform(input_df))[0]
-tree_pred = clf.predict(input_df)[0]
+    except Exception as e:
+        st.error(f"Error: {e}")
 
-# Decode category back to text (SMALL / MEDIUM / LARGE)
-tree_pred_label = encoders["VOLUME_CATEGORY"].inverse_transform([tree_pred])[0]
-
-st.write(f"**Linear Regression FILLING VOL = {lin_pred:.3f}**")
-st.write(f"**Polynomial Regression FILLING VOL = {poly_pred:.3f}**")
-st.write(f"**Decision Tree VOLUME CATEGORY = {tree_pred_label}**")
-
-st.success("App ready! Fully functional.")
+st.info("App ready! Fully functional.")
