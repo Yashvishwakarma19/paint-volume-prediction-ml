@@ -94,8 +94,11 @@ lin_pred = lin.predict(input_df)[0]
 poly_pred = poly_model.predict(poly.transform(input_df))[0]
 tree_pred = clf.predict(input_df)[0]
 
+# Decode category back to text (SMALL / MEDIUM / LARGE)
+tree_pred_label = encoders["VOLUME_CATEGORY"].inverse_transform([tree_pred])[0]
+
 st.write(f"**Linear Regression FILLING VOL = {lin_pred:.3f}**")
 st.write(f"**Polynomial Regression FILLING VOL = {poly_pred:.3f}**")
-st.write(f"**Decision Tree VOLUME CATEGORY = {tree_pred}**")
+st.write(f"**Decision Tree VOLUME CATEGORY = {tree_pred_label}**")
 
 st.success("App ready! Fully functional.")
