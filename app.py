@@ -20,7 +20,6 @@ def load_data():
 
 df = load_data()
 st.success("Dataset loaded successfully!")
-st.write(df.head())
 
 # -------------------------
 # CLEANING
@@ -36,52 +35,55 @@ df["VOLUME_CATEGORY"] = df["FILLING VOL"].apply(
 # ENCODING CATEGORICAL COLUMNS
 # -------------------------
 encode_cols = df.select_dtypes(include=["object"]).columns
-
 encoders = {}
+
 for col in encode_cols:
     enc = LabelEncoder()
     df[col] = enc.fit_transform(df[col].astype(str))
     encoders[col] = enc
 
 # -------------------------
-# Regression target & features
+# FEATURES & TARGETS
 # -------------------------
 X = df.drop(columns=["FILLING VOL", "VOLUME_CATEGORY"])
 y = df["FILLING VOL"]
 
 # -------------------------
-# Linear Regression
+# MODELS
 # -------------------------
 lin = LinearRegression()
 lin.fit(X, y)
 
-# -------------------------
-# Polynomial Regression
-# -------------------------
 poly = PolynomialFeatures(degree=2)
 X_poly = poly.fit_transform(X)
-
 poly_model = LinearRegression()
 poly_model.fit(X_poly, y)
 
-# -------------------------
-# Decision Tree Classification
-# -------------------------
 clf = DecisionTreeClassifier()
 clf.fit(X, df["VOLUME_CATEGORY"])
 
 # -------------------------
-# USER INPUT
+# USER INPUT FORM
 # -------------------------
-st.header("Enter product details")
+st.header("Enter Product Details")
 
-user_input = {}
+user_data = {}
 
 for col in X.columns:
-    default_val = float(df[col].median())
-    user_input[col] = st.number_input(f"{col}", value=default_val)
 
-input_df = pd.DataFrame([user_input])
+    # If categorical → dropdown with unique original labels
+    if col in encode_cols:
+        original_values = encoders[col].classes_
+        user_value = st.selectbox(f"{col}", original_values)
+        user_data[col] = encoders[col].transform([user_value])[0]
+
+    else:
+        # numeric → use median default
+        default_val = float(df[col].median())
+        user_value = st.number_input(f"{col}", value=default_val)
+        user_data[col] = user_value
+
+input_df = pd.DataFrame([user_data])
 
 # -------------------------
 # PREDICTIONS
@@ -96,4 +98,4 @@ st.write(f"**Linear Regression FILLING VOL = {lin_pred:.3f}**")
 st.write(f"**Polynomial Regression FILLING VOL = {poly_pred:.3f}**")
 st.write(f"**Decision Tree VOLUME CATEGORY = {tree_pred}**")
 
-st.success("App ready! No upload needed.")
+st.success("App ready! Fully functional.")
